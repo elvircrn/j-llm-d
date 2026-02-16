@@ -7,16 +7,14 @@ GRAFANA_URL := "http://grafana.vllm.svc.cluster.local"
 # Mark start/end of benchmark runs in Grafana
 _annotate MESSAGE:
   #!/usr/bin/env bash
-  # Get current deployment configs
+  # Get key config details instead of full YAML
   echo "Fetching deployment configs..."
-  DECODE_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o yaml --namespace {{NAMESPACE}} 2>/dev/null || echo "decode config not found")
-  PREFILL_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o yaml --namespace {{NAMESPACE}} 2>/dev/null || echo "prefill config not found")
+  DECODE_IMAGE=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o jsonpath='{.spec.leaderWorkerTemplate.workerTemplate.spec.containers[0].image}' --namespace {{NAMESPACE}} 2>/dev/null || echo "unknown")
+  PREFILL_IMAGE=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o jsonpath='{.spec.leaderWorkerTemplate.workerTemplate.spec.containers[0].image}' --namespace {{NAMESPACE}} 2>/dev/null || echo "unknown")
+  DECODE_REPLICAS=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o jsonpath='{.spec.replicas}' --namespace {{NAMESPACE}} 2>/dev/null || echo "unknown")
+  PREFILL_REPLICAS=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o jsonpath='{.spec.replicas}' --namespace {{NAMESPACE}} 2>/dev/null || echo "unknown")
 
-  # Escape quotes and newlines for JSON
-  DECODE_ESCAPED=$(echo "$DECODE_YAML" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' '\r')
-  PREFILL_ESCAPED=$(echo "$PREFILL_YAML" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' '\r')
-
-  FULL_MESSAGE="{{MESSAGE}}\n\n=== DECODE CONFIG ===\n${DECODE_ESCAPED}\n\n=== PREFILL CONFIG ===\n${PREFILL_ESCAPED}"
+  CONFIG_SUMMARY="Decode: ${DECODE_REPLICAS} replicas, ${DECODE_IMAGE}\nPrefill: ${PREFILL_REPLICAS} replicas, ${PREFILL_IMAGE}"
 
   curl -X POST "{{GRAFANA_URL}}/api/annotations" \
     -u "admin:admin" \
@@ -25,7 +23,7 @@ _annotate MESSAGE:
       "dashboardId": 7,
       "panelId": 1,
       "time": '"$(date +%s)000"',
-      "text": "'"${FULL_MESSAGE}"'"
+      "text": "'"{{MESSAGE}}\n\n${CONFIG_SUMMARY}"'"
     }' \
     2>/dev/null || true
 
