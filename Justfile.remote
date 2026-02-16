@@ -7,6 +7,17 @@ GRAFANA_URL := "http://grafana.vllm.svc.cluster.local"
 # Mark start/end of benchmark runs in Grafana
 _annotate MESSAGE:
   #!/usr/bin/env bash
+  # Get current deployment configs
+  echo "Fetching deployment configs..."
+  DECODE_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o yaml --namespace {{NAMESPACE}} 2>/dev/null || echo "decode config not found")
+  PREFILL_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o yaml --namespace {{NAMESPACE}} 2>/dev/null || echo "prefill config not found")
+
+  # Escape quotes and newlines for JSON
+  DECODE_ESCAPED=$(echo "$DECODE_YAML" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' '\r')
+  PREFILL_ESCAPED=$(echo "$PREFILL_YAML" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' '\r')
+
+  FULL_MESSAGE="{{MESSAGE}}\n\n=== DECODE CONFIG ===\n${DECODE_ESCAPED}\n\n=== PREFILL CONFIG ===\n${PREFILL_ESCAPED}"
+
   curl -X POST "{{GRAFANA_URL}}/api/annotations" \
     -u "admin:admin" \
     -H "Content-Type: application/json" \
@@ -14,7 +25,7 @@ _annotate MESSAGE:
       "dashboardId": 7,
       "panelId": 1,
       "time": '"$(date +%s)000"',
-      "text": "{{MESSAGE}}"
+      "text": "'"${FULL_MESSAGE}"'"
     }' \
     2>/dev/null || true
 
