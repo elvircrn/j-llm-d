@@ -17,7 +17,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: poker
-          image: ${POKER_IMAGE}:0.0.10
+          image: ${POKER_IMAGE}:${POKER_TAG}
           imagePullPolicy: Always
           resources:
             limits:

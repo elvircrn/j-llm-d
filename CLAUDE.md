@@ -40,6 +40,7 @@ The Justfile requires a `.env` file with:
 - `NAMESPACE` - Kubernetes namespace (default: `vllm`)
 - `NVIDIA_KUBECONFIG` - Path to alternate kubeconfig for nvidia cluster (fp4 deployments)
 - `POKER_IMAGE` - Poker container image repository (required)
+- `POKER_TAG` - Poker container image tag (required)
 
 ### Deployment Commands
 

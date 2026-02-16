@@ -55,12 +55,14 @@ create-secrets:
 start-poker:
   #!/usr/bin/env bash
   export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
-  envsubst '${POKER_IMAGE}' < poker/poker.yaml | {{KN}} apply -f -
+  export POKER_TAG="{{env_var('POKER_TAG')}}"
+  envsubst '${POKER_IMAGE} ${POKER_TAG}' < poker/poker.yaml | {{KN}} apply -f -
 
 start-poker-fp4:
   #!/usr/bin/env bash
   export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
-  envsubst '${POKER_IMAGE}' < poker/poker.yaml | {{KN_FP4}} apply -f -
+  export POKER_TAG="{{env_var('POKER_TAG')}}"
+  envsubst '${POKER_IMAGE} ${POKER_TAG}' < poker/poker.yaml | {{KN_FP4}} apply -f -
 
 # Fetch decode pod names and IPs and cache them
 get-decode-pods:
@@ -109,7 +111,8 @@ parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_
     OUTPUT_LEN={{OUTPUT_LEN}} \
     OUTPUT_PATH="parallel-guidellm-$(date +%Y%m%d-%H%M%S)" \
     POKER_IMAGE="{{env_var('POKER_IMAGE')}}" \
-    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH} ${POKER_IMAGE}' \
+    POKER_TAG="{{env_var('POKER_TAG')}}" \
+    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH} ${POKER_IMAGE} ${POKER_TAG}' \
       < parallel-guidellm.yaml | kubectl apply -f -
 
 deploy_inferencepool KUBECONFIG_ARG="":

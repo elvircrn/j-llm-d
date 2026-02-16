@@ -1,5 +1,6 @@
 set dotenv-load := true
 set dotenv-filename := "../.env"
+set dotenv-required := true
 
 default:
   just --list
