@@ -107,6 +107,52 @@ poke:
   $KUBECTL_CMD exec -it poker -- /bin/zsh
 
 
+# Wait for poker + model serving pods to be ready, then run `just eval` from poker
+auto-eval:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  mkdir -p ./.tmp
+
+  if [[ -n "${NVIDIA_KUBECONFIG:-}" ]]; then
+    KUBECTL_CMD="kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} -n {{NAMESPACE}}"
+  else
+    KUBECTL_CMD="{{KN}}"
+  fi
+
+  echo "Waiting for poker pod..."
+  until $KUBECTL_CMD get pod poker &>/dev/null; do sleep 5; done
+  $KUBECTL_CMD wait --for=condition=Ready pod/poker --timeout=300s
+  echo "Poker pod is ready."
+
+  echo "Waiting for decode pods..."
+  until $KUBECTL_CMD get pods -l llm-d.ai/role=decode --no-headers 2>/dev/null | grep -q .; do sleep 10; done
+  $KUBECTL_CMD wait --for=condition=Ready pods -l llm-d.ai/role=decode --timeout=1800s
+  echo "Decode pods are ready."
+
+  echo "Waiting for prefill pods..."
+  until $KUBECTL_CMD get pods -l llm-d.ai/role=prefill --no-headers 2>/dev/null | grep -q .; do sleep 10; done
+  $KUBECTL_CMD wait --for=condition=Ready pods -l llm-d.ai/role=prefill --timeout=1800s
+  echo "Prefill pods are ready."
+
+  # Set up poker pod (same as poke)
+  echo "Fetching deployment configs locally..."
+  cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/decode.yaml 2>/dev/null > .tmp/decode_config.yaml || echo "decode config not found" > .tmp/decode_config.yaml
+  cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/prefill.yaml 2>/dev/null > .tmp/prefill_config.yaml || echo "prefill config not found" > .tmp/prefill_config.yaml
+
+  export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
+  export NAMESPACE="{{NAMESPACE}}"
+  export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
+
+  envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
+  $KUBECTL_CMD cp .tmp/Justfile.remote.tmp poker:/app/Justfile
+  $KUBECTL_CMD cp annotate.sh poker:/app/annotate.sh
+  $KUBECTL_CMD cp .tmp/decode_config.yaml poker:/app/decode_config.yaml
+  $KUBECTL_CMD cp .tmp/prefill_config.yaml poker:/app/prefill_config.yaml
+  $KUBECTL_CMD exec poker -- chmod +x /app/annotate.sh
+
+  echo "All pods ready. Running eval..."
+  $KUBECTL_CMD exec poker -- just eval
+
 parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_LEN='128' OUTPUT_LEN='1000' N_WORKERS='4':
   {{KN}} delete job parallel-guidellm --ignore-not-found=true \
   && env \
