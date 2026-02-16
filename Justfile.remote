@@ -1,6 +1,6 @@
 BASE_URL := "${BASE_URL}"
 NAMESPACE := "${NAMESPACE}"
-GRAFANA_URL := "http://grafana.{{NAMESPACE}}.svc.cluster.local"
+GRAFANA_URL := "http://grafana.vllm.svc.cluster.local"
 
 # Use this Justfile within the cluster.
 
