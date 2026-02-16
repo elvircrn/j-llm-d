@@ -7,6 +7,8 @@ GH_TOKEN := "$GH_TOKEN"
 
 
 KN := "kubectl -n " + NAMESPACE
+NVIDIA_KUBECONFIG := "$NVIDIA_KUBECONFIG"
+KN_FP4 := "kubectl --kubeconfig " + NVIDIA_KUBECONFIG + " -n " + NAMESPACE
 
 EXAMPLE_DIR := "llm-d/guides/wide-ep-lws"
 GATEWAY_DIR := "llm-d/guides/recipes/gateway"
@@ -53,6 +55,9 @@ create-secrets:
 start-poker:
     {{KN}} apply -f poker/poker.yaml
 
+start-poker-fp4:
+    {{KN_FP4}} apply -f poker/poker.yaml
+
 # Fetch decode pod names and IPs and cache them
 get-decode-pods:
   #!/usr/bin/env bash
@@ -76,6 +81,19 @@ poke:
   kubectl cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
   {{KN}} exec -it poker -- /bin/zsh
 
+poke-fp4:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  mkdir -p ./.tmp
+
+  # Export variables for envsubst
+  export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
+  export NAMESPACE="{{NAMESPACE}}"
+
+  envsubst '${BASE_URL} ${NAMESPACE}' < Justfile.remote > .tmp/Justfile.remote.tmp
+  kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
+  {{KN_FP4}} exec -it poker -- /bin/zsh
+
 
 parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_LEN='128' OUTPUT_LEN='1000' N_WORKERS='4':
   {{KN}} delete job parallel-guidellm --ignore-not-found=true \
@@ -89,9 +107,10 @@ parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_
     envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH}' \
       < parallel-guidellm.yaml | kubectl apply -f -
 
-deploy_inferencepool:
+deploy_inferencepool KUBECONFIG_ARG="":
   cd {{EXAMPLE_DIR}} && \
   helm install llm-d-infpool \
+    {{KUBECONFIG_ARG}} \
     -n {{NAMESPACE}} \
     -f manifests/inferencepool.values.yaml \
     --set "provider.name=istio" \
@@ -113,6 +132,15 @@ stop:
 
 restart:
   just stop && just start
+
+start-fp4:
+  cd {{EXAMPLE_DIR}} && {{KN_FP4}} apply -k ./manifests/modelserver/gb200_dsv31_fp4
+
+stop-fp4:
+  cd {{EXAMPLE_DIR}} && {{KN_FP4}} delete -k ./manifests/modelserver/gb200_dsv31_fp4 --ignore-not-found=true
+
+restart-fp4:
+  just stop-fp4 && just start-fp4
 
 # Copy PyTorch traces from all decode pods to local ./traces/N directory
 copy-traces:

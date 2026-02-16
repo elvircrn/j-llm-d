@@ -1,4 +1,4 @@
-IMAGE := "quay.io/tms/poker"
+IMAGE := env_var_or_default("POKER_IMAGE", "quay.io/tms/poker")
 
 default:
   just --list

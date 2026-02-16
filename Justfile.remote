@@ -1,7 +1,23 @@
 BASE_URL := "${BASE_URL}"
 NAMESPACE := "${NAMESPACE}"
+GRAFANA_URL := "http://grafana.{{NAMESPACE}}.svc.cluster.local"
 
 # Use this Justfile within the cluster.
+
+# Mark start/end of benchmark runs in Grafana
+_annotate MESSAGE TAGS="benchmark":
+  #!/usr/bin/env bash
+  curl -X POST "{{GRAFANA_URL}}/api/annotations" \
+    -u "admin:admin" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"dashboardId\": 7,
+      \"panelId\": 1,
+      \"time\": $(date +%s)000,
+      \"text\": \"{{MESSAGE}}\",
+      \"tags\": [\"{{TAGS}}\"]
+    }" \
+    2>/dev/null || true
 
 default:
   just --list
@@ -23,7 +39,9 @@ eval:
     --num_fewshot 10 \
 
 benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
-    vllm bench serve \
+    #!/usr/bin/env bash
+    just _annotate "just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,vllm,start" \
+    && vllm bench serve \
         --base-url {{BASE_URL}} \
         --model $(just _model) \
         --dataset-name random \
@@ -33,10 +51,11 @@ benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --request-rate 4096 \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos
+        --ignore-eos \
+    && just _annotate "END: just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,vllm,end"
 
 # Run N waves of X concurrent requests (wraps `benchmark`)
-# Usage: just run-benchmark N X INPUT_LEN OUTPUT_LEN
+# Usage: just benchmark-a N X INPUT_LEN OUTPUT_LEN
 # Optional: set OUTFILE=/path/to/log to control the log destination.
 benchmark-a N X INPUT_LEN OUTPUT_LEN:
     N_X=$(( {{N}} * {{X}} ))
@@ -44,6 +63,8 @@ benchmark-a N X INPUT_LEN OUTPUT_LEN:
     just benchmark "{{X}}" "$N_X" "{{INPUT_LEN}}" "{{OUTPUT_LEN}}" |& tee "$outfile"
 
 benchmark_g MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
+  #!/usr/bin/env bash
+  just _annotate "just benchmark_g {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,guidellm,start"
   GUIDELLM__REQUEST_TIMEOUT="900" \
   GUIDELLM__MAX_CONCURRENCY="{{MC}}" \
     guidellm benchmark \
@@ -51,12 +72,15 @@ benchmark_g MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
       --rate-type constant \
       --rate 2048 \
       --max-requests {{NUM_REQUESTS}} \
-      --data '{"prompt_tokens": {{INPUT_LEN}}, "output_tokens": {{OUTPUT_LEN}}}'
+      --data '{"prompt_tokens": {{INPUT_LEN}}, "output_tokens": {{OUTPUT_LEN}}}' \
+  && just _annotate "END: just benchmark_g {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,guidellm,end"
 
 # Simulates a pure decode workload, for measuring output token throughput and TTFT.
 # Designed to approximate the decode side of a P/D deployment in a steady state.
 benchmark_decode_workload NUM_REQUESTS OUTPUT_LEN:
-    vllm bench serve \
+    #!/usr/bin/env bash
+    just _annotate "just benchmark_decode_workload {{NUM_REQUESTS}} {{OUTPUT_LEN}}" "benchmark,decode,start" \
+    && vllm bench serve \
         --base-url {{BASE_URL}} \
         --model $(just _model) \
         --dataset-name random \
@@ -64,11 +88,14 @@ benchmark_decode_workload NUM_REQUESTS OUTPUT_LEN:
         --random-output-len {{OUTPUT_LEN}}  \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos
+        --ignore-eos \
+    && just _annotate "END: just benchmark_decode_workload {{NUM_REQUESTS}} {{OUTPUT_LEN}}" "benchmark,decode,end"
 
 # For hitting an individual vLLM instance while deploying a P/D setup
 benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
-    vllm bench serve \
+    #!/usr/bin/env bash
+    just _annotate "just benchmark_no_pd {{POD_IP}} {{RR}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,direct,start" \
+    && vllm bench serve \
         --base-url http://{{POD_IP}}:8000 \
         --model $(just _model) \
         --dataset-name random \
@@ -77,7 +104,8 @@ benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --request-rate {{RR}} \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos
+        --ignore-eos \
+    && just _annotate "END: just benchmark_no_pd {{POD_IP}} {{RR}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" "benchmark,direct,end"
 
 # For vLLM PyTorch traces.
 # vLLM serve must be run with the VLLM_TORCH_PROFILER_DIR env set.

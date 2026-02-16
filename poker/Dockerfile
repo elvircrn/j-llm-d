@@ -36,6 +36,9 @@ RUN git clone --depth=1 --filter=blob:none https://github.com/tlrmchlsmth/dotfil
     && PIP_BREAK_SYSTEM_PACKAGES=1 bash install.sh \
     && rm -rf .git
 
+# vllm for benchmarking
+RUN uv pip install vllm
+
 # guidellm
 RUN git clone --depth=1 --filter=blob:none \
       -b max_completion_tokens \
