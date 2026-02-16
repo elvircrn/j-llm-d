@@ -45,9 +45,8 @@ benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --ignore-eos 2>&1 | tee /dev/tty)
 
     # Include results in end annotation
-    just _annotate "BENCHMARK RESULTS - just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}
-
-$BENCHMARK_OUTPUT"
+    END_MSG="BENCHMARK RESULTS - just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
+    just _annotate "$END_MSG"
 
 # Run N waves of X concurrent requests (wraps `benchmark`)
 # Usage: just benchmark-a N X INPUT_LEN OUTPUT_LEN
