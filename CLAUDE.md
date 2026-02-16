@@ -39,6 +39,7 @@ The Justfile requires a `.env` file with:
 - `GH_TOKEN` - GitHub token
 - `NAMESPACE` - Kubernetes namespace (default: `vllm`)
 - `NVIDIA_KUBECONFIG` - Path to alternate kubeconfig for nvidia cluster (fp4 deployments)
+- `POKER_IMAGE` - Poker container image repository (required)
 
 ### Deployment Commands
 
@@ -195,7 +196,7 @@ python agg.py [N] [--use-total] [--show-details]
 - Deployment uses LeaderWorkerSet for multi-host inference coordination
 - vLLM API servers can take **7-10 minutes** to start up for large MoE models
 - CoreWeave-specific configurations include custom scheduler (`custom-binpack-scheduler`) and RDMA resources
-- The poker pod image (`quay.io/tms/poker:0.0.12`) includes pre-installed benchmarking tools (vllm, guidellm, lm_eval)
+- The poker pod image (configured via required `POKER_IMAGE` env var) includes pre-installed benchmarking tools (vllm, guidellm, lm_eval)
 - PyTorch profiling traces are stored in decode pods at `/traces` and copied locally to `./traces/` (gitignored)
 - Decode pod information is cached in `.tmp/decode_pods.txt` to avoid repeated kubectl queries
 - Dual cluster support: CoreWeave (default kubectl) and nvidia cluster (via NVIDIA_KUBECONFIG)

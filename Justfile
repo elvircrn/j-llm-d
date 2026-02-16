@@ -53,10 +53,14 @@ create-secrets:
   && kubectl create secret generic gh-token-secret --from-literal=GH_TOKEN={{GH_TOKEN}} -n {{NAMESPACE}}
 
 start-poker:
-    {{KN}} apply -f poker/poker.yaml
+  #!/usr/bin/env bash
+  export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
+  envsubst '${POKER_IMAGE}' < poker/poker.yaml | {{KN}} apply -f -
 
 start-poker-fp4:
-    {{KN_FP4}} apply -f poker/poker.yaml
+  #!/usr/bin/env bash
+  export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
+  envsubst '${POKER_IMAGE}' < poker/poker.yaml | {{KN_FP4}} apply -f -
 
 # Fetch decode pod names and IPs and cache them
 get-decode-pods:
@@ -104,7 +108,8 @@ parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_
     INPUT_LEN={{INPUT_LEN}} \
     OUTPUT_LEN={{OUTPUT_LEN}} \
     OUTPUT_PATH="parallel-guidellm-$(date +%Y%m%d-%H%M%S)" \
-    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH}' \
+    POKER_IMAGE="{{env_var('POKER_IMAGE')}}" \
+    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH} ${POKER_IMAGE}' \
       < parallel-guidellm.yaml | kubectl apply -f -
 
 deploy_inferencepool KUBECONFIG_ARG="":
