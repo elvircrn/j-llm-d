@@ -8,9 +8,13 @@ GRAFANA_URL="$4"
 
 echo "Fetching full deployment configs..."
 
-# Get full YAML configs
-DECODE_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o yaml --namespace "$NAMESPACE" 2>/dev/null || echo "decode config not found")
-PREFILL_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o yaml --namespace "$NAMESPACE" 2>/dev/null || echo "prefill config not found")
+# Get available configs (try LeaderWorkerSets first, fall back to pods)
+DECODE_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-decode -o yaml --namespace "$NAMESPACE" 2>/dev/null || \
+              kubectl get pods -l llm-d.ai/role=decode -o yaml --namespace "$NAMESPACE" 2>/dev/null || \
+              echo "decode config not found")
+PREFILL_YAML=$(kubectl get leaderworkerset wide-ep-llm-d-prefill -o yaml --namespace "$NAMESPACE" 2>/dev/null || \
+               kubectl get pods -l llm-d.ai/role=prefill -o yaml --namespace "$NAMESPACE" 2>/dev/null || \
+               echo "prefill config not found")
 
 # Create properly escaped JSON payload with full configs
 FULL_TEXT="$MESSAGE

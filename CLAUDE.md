@@ -70,8 +70,10 @@ just poke
 just start-fp4      # Deploy fp4 model servers only
 just stop-fp4       # Clean up fp4 deployment
 just restart-fp4    # Restart fp4 deployment
-just start-poker-fp4 # Deploy poker pod to nvidia cluster
-just poke-fp4       # Interactive shell in nvidia cluster poker pod
+
+# Poker pod deployment (auto-detects cluster via NVIDIA_KUBECONFIG)
+just start-poker    # Deploy poker pod (uses nvidia cluster if NVIDIA_KUBECONFIG set)
+just poke           # Interactive shell in poker pod (auto-detects cluster)
 ```
 
 ### Monitoring and Debugging

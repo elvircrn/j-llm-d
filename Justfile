@@ -56,13 +56,15 @@ start-poker:
   #!/usr/bin/env bash
   export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
   export POKER_TAG="{{env_var('POKER_TAG')}}"
-  envsubst '${POKER_IMAGE} ${POKER_TAG}' < poker/poker.yaml | {{KN}} apply -f -
 
-start-poker-fp4:
-  #!/usr/bin/env bash
-  export POKER_IMAGE="{{env_var('POKER_IMAGE')}}"
-  export POKER_TAG="{{env_var('POKER_TAG')}}"
-  envsubst '${POKER_IMAGE} ${POKER_TAG}' < poker/poker.yaml | {{KN_FP4}} apply -f -
+  # Use nvidia kubeconfig if available, otherwise default
+  if [[ -n "${NVIDIA_KUBECONFIG:-}" ]]; then
+    KUBECTL_CMD="kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} -n {{NAMESPACE}}"
+  else
+    KUBECTL_CMD="{{KN}}"
+  fi
+
+  envsubst '${POKER_IMAGE} ${POKER_TAG}' < poker/poker.yaml | $KUBECTL_CMD apply -f -
 
 # Fetch decode pod names and IPs and cache them
 get-decode-pods:
@@ -79,21 +81,12 @@ poke:
   set -euo pipefail
   mkdir -p ./.tmp
 
-  # Export variables for envsubst
-  export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
-  export NAMESPACE="{{NAMESPACE}}"
-  export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
-
-  envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
-  kubectl cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
-  kubectl cp annotate.sh {{NAMESPACE}}/poker:/app/annotate.sh
-  {{KN}} exec -it poker -- chmod +x /app/annotate.sh
-  {{KN}} exec -it poker -- /bin/zsh
-
-poke-fp4:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  mkdir -p ./.tmp
+  # Use nvidia kubeconfig if available, otherwise default
+  if [[ -n "${NVIDIA_KUBECONFIG:-}" ]]; then
+    KUBECTL_CMD="kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} -n {{NAMESPACE}}"
+  else
+    KUBECTL_CMD="{{KN}}"
+  fi
 
   # Export variables for envsubst
   export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
@@ -101,10 +94,10 @@ poke-fp4:
   export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
 
   envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
-  kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
-  kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} cp annotate.sh {{NAMESPACE}}/poker:/app/annotate.sh
-  {{KN_FP4}} exec -it poker -- chmod +x /app/annotate.sh
-  {{KN_FP4}} exec -it poker -- /bin/zsh
+  $KUBECTL_CMD cp .tmp/Justfile.remote.tmp poker:/app/Justfile
+  $KUBECTL_CMD cp annotate.sh poker:/app/annotate.sh
+  $KUBECTL_CMD exec -it poker -- chmod +x /app/annotate.sh
+  $KUBECTL_CMD exec -it poker -- /bin/zsh
 
 
 parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_LEN='128' OUTPUT_LEN='1000' N_WORKERS='4':
