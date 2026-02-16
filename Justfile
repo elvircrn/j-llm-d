@@ -82,9 +82,12 @@ poke:
   # Export variables for envsubst
   export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
   export NAMESPACE="{{NAMESPACE}}"
+  export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
 
-  envsubst '${BASE_URL} ${NAMESPACE}' < Justfile.remote > .tmp/Justfile.remote.tmp
+  envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
   kubectl cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
+  kubectl cp annotate.sh {{NAMESPACE}}/poker:/app/annotate.sh
+  {{KN}} exec -it poker -- chmod +x /app/annotate.sh
   {{KN}} exec -it poker -- /bin/zsh
 
 poke-fp4:
@@ -95,9 +98,12 @@ poke-fp4:
   # Export variables for envsubst
   export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
   export NAMESPACE="{{NAMESPACE}}"
+  export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
 
-  envsubst '${BASE_URL} ${NAMESPACE}' < Justfile.remote > .tmp/Justfile.remote.tmp
+  envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
   kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} cp .tmp/Justfile.remote.tmp {{NAMESPACE}}/poker:/app/Justfile
+  kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} cp annotate.sh {{NAMESPACE}}/poker:/app/annotate.sh
+  {{KN_FP4}} exec -it poker -- chmod +x /app/annotate.sh
   {{KN_FP4}} exec -it poker -- /bin/zsh
 
 
