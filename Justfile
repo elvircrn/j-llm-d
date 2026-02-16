@@ -88,6 +88,11 @@ poke:
     KUBECTL_CMD="{{KN}}"
   fi
 
+  # Fetch configs locally and save to files
+  echo "Fetching deployment configs locally..."
+  cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/decode.yaml 2>/dev/null > .tmp/decode_config.yaml || echo "decode config not found" > .tmp/decode_config.yaml
+  cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/prefill.yaml 2>/dev/null > .tmp/prefill_config.yaml || echo "prefill config not found" > .tmp/prefill_config.yaml
+
   # Export variables for envsubst
   export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
   export NAMESPACE="{{NAMESPACE}}"
@@ -96,6 +101,8 @@ poke:
   envsubst '${BASE_URL} ${NAMESPACE} ${GRAFANA_URL}' < Justfile.remote > .tmp/Justfile.remote.tmp
   $KUBECTL_CMD cp .tmp/Justfile.remote.tmp poker:/app/Justfile
   $KUBECTL_CMD cp annotate.sh poker:/app/annotate.sh
+  $KUBECTL_CMD cp .tmp/decode_config.yaml poker:/app/decode_config.yaml
+  $KUBECTL_CMD cp .tmp/prefill_config.yaml poker:/app/prefill_config.yaml
   $KUBECTL_CMD exec -it poker -- chmod +x /app/annotate.sh
   $KUBECTL_CMD exec -it poker -- /bin/zsh
 

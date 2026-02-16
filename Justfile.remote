@@ -29,8 +29,10 @@ eval:
 
 benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
     #!/usr/bin/env bash
-    just _annotate "just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}" \
-    && vllm bench serve \
+    just _annotate "just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
+
+    # Run benchmark and capture output
+    BENCHMARK_OUTPUT=$(vllm bench serve \
         --base-url {{BASE_URL}} \
         --model $(just _model) \
         --dataset-name random \
@@ -40,8 +42,12 @@ benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --request-rate 4096 \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos \
-    && just _annotate "END: just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
+        --ignore-eos 2>&1 | tee /dev/tty)
+
+    # Include results in end annotation
+    just _annotate "BENCHMARK RESULTS - just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}
+
+$BENCHMARK_OUTPUT"
 
 # Run N waves of X concurrent requests (wraps `benchmark`)
 # Usage: just benchmark-a N X INPUT_LEN OUTPUT_LEN
