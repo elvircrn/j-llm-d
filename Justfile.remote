@@ -4,9 +4,13 @@ GRAFANA_URL := "http://grafana.vllm.svc.cluster.local"
 
 # Use this Justfile within the cluster.
 
-# Mark start/end of benchmark runs in Grafana
+# Mark start of benchmark runs in Grafana (includes deployment configs)
 _annotate MESSAGE:
   /app/annotate.sh "{{MESSAGE}}" "{{BASE_URL}}" "{{NAMESPACE}}" "{{GRAFANA_URL}}"
+
+# Mark end of benchmark runs in Grafana (no configs, just the message)
+_annotate_end MESSAGE:
+  /app/annotate.sh "{{MESSAGE}}" "{{BASE_URL}}" "{{NAMESPACE}}" "{{GRAFANA_URL}}" skip
 
 default:
   just --list
@@ -46,7 +50,7 @@ benchmark RR MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
 
     # Include results in end annotation
     END_MSG="BENCHMARK RESULTS - just benchmark {{RR}} {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
-    just _annotate "$END_MSG"
+    just _annotate_end "$END_MSG"
 
 # Run N waves of X concurrent requests (wraps `benchmark`)
 # Usage: just benchmark-a RR N X INPUT_LEN OUTPUT_LEN
@@ -67,7 +71,7 @@ benchmark_g MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
       --rate 2048 \
       --max-requests {{NUM_REQUESTS}} \
       --data '{"prompt_tokens": {{INPUT_LEN}}, "output_tokens": {{OUTPUT_LEN}}}' \
-  && just _annotate "END: just benchmark_g {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
+  && just _annotate_end "END: just benchmark_g {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
 
 # Simulates a pure decode workload, for measuring output token throughput and TTFT.
 # Designed to approximate the decode side of a P/D deployment in a steady state.
@@ -83,7 +87,7 @@ benchmark_decode_workload NUM_REQUESTS OUTPUT_LEN:
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
         --ignore-eos \
-    && just _annotate "END: just benchmark_decode_workload {{NUM_REQUESTS}} {{OUTPUT_LEN}}"
+    && just _annotate_end "END: just benchmark_decode_workload {{NUM_REQUESTS}} {{OUTPUT_LEN}}"
 
 # For hitting an individual vLLM instance while deploying a P/D setup
 benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
@@ -99,7 +103,7 @@ benchmark_no_pd POD_IP RR NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
         --ignore-eos \
-    && just _annotate "END: just benchmark_no_pd {{POD_IP}} {{RR}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
+    && just _annotate_end "END: just benchmark_no_pd {{POD_IP}} {{RR}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
 
 # For vLLM PyTorch traces.
 # vLLM serve must be run with the VLLM_TORCH_PROFILER_DIR env set.
