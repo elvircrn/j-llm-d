@@ -42,7 +42,7 @@ benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --request-rate 4096 \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos 2>&1 | tee /dev/tty)
+        --ignore-eos 2>/dev/tty | tee /dev/tty)
 
     # Include results in end annotation
     END_MSG="BENCHMARK RESULTS - just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
