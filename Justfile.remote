@@ -27,9 +27,9 @@ eval:
     --model_args model=$(just _model),base_url={{BASE_URL}}/v1/completions,num_concurrent=2000,max_retries=3,tokenized_requests=False \
     --num_fewshot 10 \
 
-benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
+benchmark RR MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
     #!/usr/bin/env bash
-    just _annotate "just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
+    just _annotate "just benchmark {{RR}} {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"
 
     # Run benchmark and capture output
     BENCHMARK_OUTPUT=$(vllm bench serve \
@@ -39,22 +39,22 @@ benchmark MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --random-input-len {{INPUT_LEN}} \
         --random-output-len {{OUTPUT_LEN}}  \
         --max-concurrency {{MC}} \
-        --request-rate 4096 \
+        --request-rate {{RR}} \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
         --ignore-eos 2>/dev/tty | tee /dev/tty)
 
     # Include results in end annotation
-    END_MSG="BENCHMARK RESULTS - just benchmark {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
+    END_MSG="BENCHMARK RESULTS - just benchmark {{RR}} {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
     just _annotate "$END_MSG"
 
 # Run N waves of X concurrent requests (wraps `benchmark`)
-# Usage: just benchmark-a N X INPUT_LEN OUTPUT_LEN
+# Usage: just benchmark-a RR N X INPUT_LEN OUTPUT_LEN
 # Optional: set OUTFILE=/path/to/log to control the log destination.
-benchmark-a N X INPUT_LEN OUTPUT_LEN:
+benchmark-a RR N X INPUT_LEN OUTPUT_LEN:
     N_X=$(( {{N}} * {{X}} ))
     outfile="${OUTFILE:-run_benchmark_{{N}}x{{X}}_$(date +%Y%m%d_%H%M%S).log}"
-    just benchmark "{{X}}" "$N_X" "{{INPUT_LEN}}" "{{OUTPUT_LEN}}" |& tee "$outfile"
+    just benchmark "{{RR}}" "{{X}}" "$N_X" "{{INPUT_LEN}}" "{{OUTPUT_LEN}}" |& tee "$outfile"
 
 benchmark_g MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
   #!/usr/bin/env bash
