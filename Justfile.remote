@@ -42,7 +42,7 @@ benchmark RR MC NUM_REQUESTS INPUT_LEN OUTPUT_LEN:
         --request-rate {{RR}} \
         --seed $(date +%M%H%M%S) \
         --num-prompts {{NUM_REQUESTS}} \
-        --ignore-eos 2>/dev/tty | tee /dev/tty)
+        --ignore-eos 2>&1 | tee /dev/tty | sed -n '/Serving Benchmark Result/,/^==*$/p')
 
     # Include results in end annotation
     END_MSG="BENCHMARK RESULTS - just benchmark {{RR}} {{MC}} {{NUM_REQUESTS}} {{INPUT_LEN}} {{OUTPUT_LEN}}"$'\n\n'"$BENCHMARK_OUTPUT"
