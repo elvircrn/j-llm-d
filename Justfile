@@ -153,19 +153,28 @@ auto-eval:
   echo "All pods ready. Running eval..."
   $KUBECTL_CMD exec poker -- just eval
 
-parallel-guidellm CONCURRENT_PER_WORKER='4000' REQUESTS_PER_WORKER='4000' INPUT_LEN='128' OUTPUT_LEN='1000' N_WORKERS='4':
-  {{KN}} delete job parallel-guidellm --ignore-not-found=true \
-  && env \
+parallel-guidellm RR CONCURRENT_PER_WORKER REQUESTS_PER_WORKER INPUT_LEN OUTPUT_LEN N_WORKERS:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if [[ -n "${NVIDIA_KUBECONFIG:-}" ]]; then
+    KUBECTL_CMD="kubectl --kubeconfig {{NVIDIA_KUBECONFIG}} -n {{NAMESPACE}}"
+  else
+    KUBECTL_CMD="{{KN}}"
+  fi
+  $KUBECTL_CMD delete job parallel-guidellm --ignore-not-found=true
+  env \
     N_WORKERS={{N_WORKERS}} \
     MAX_CONCURRENCY={{CONCURRENT_PER_WORKER}} \
     NUM_REQUESTS={{REQUESTS_PER_WORKER}} \
+    RATE={{RR}} \
     INPUT_LEN={{INPUT_LEN}} \
     OUTPUT_LEN={{OUTPUT_LEN}} \
+    BASE_URL="http://llm-d-inference-gateway-istio.vllm.svc.cluster.local" \
     OUTPUT_PATH="parallel-guidellm-$(date +%Y%m%d-%H%M%S)" \
     POKER_IMAGE="{{env_var('POKER_IMAGE')}}" \
     POKER_TAG="{{env_var('POKER_TAG')}}" \
-    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${INPUT_LEN} ${OUTPUT_LEN} ${OUTPUT_PATH} ${POKER_IMAGE} ${POKER_TAG}' \
-      < parallel-guidellm.yaml | kubectl apply -f -
+    envsubst '${N_WORKERS} ${MAX_CONCURRENCY} ${NUM_REQUESTS} ${RATE} ${INPUT_LEN} ${OUTPUT_LEN} ${BASE_URL} ${OUTPUT_PATH} ${POKER_IMAGE} ${POKER_TAG}' \
+      < parallel-guidellm.yaml | $KUBECTL_CMD apply -f -
 
 deploy_inferencepool KUBECONFIG_ARG="":
   cd {{EXAMPLE_DIR}} && \
