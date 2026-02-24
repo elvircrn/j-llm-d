@@ -95,7 +95,7 @@ poke:
   cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/prefill.yaml 2>/dev/null > .tmp/prefill_config.yaml || echo "prefill config not found" > .tmp/prefill_config.yaml
 
   # Export variables for envsubst
-  export BASE_URL="http://wide-ep-gb200-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
+  export BASE_URL="http://wide-ep-llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
   export NAMESPACE="{{NAMESPACE}}"
   export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
 
@@ -140,7 +140,7 @@ auto-eval:
   cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/decode.yaml 2>/dev/null > .tmp/decode_config.yaml || echo "decode config not found" > .tmp/decode_config.yaml
   cat llm-d/guides/wide-ep-lws/manifests/modelserver/gb200_dsv31_fp4/prefill.yaml 2>/dev/null > .tmp/prefill_config.yaml || echo "prefill config not found" > .tmp/prefill_config.yaml
 
-  export BASE_URL="http://llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
+  export BASE_URL="http://wide-ep-llm-d-inference-gateway-istio.{{NAMESPACE}}.svc.cluster.local"
   export NAMESPACE="{{NAMESPACE}}"
   export GRAFANA_URL="http://grafana.vllm.svc.cluster.local"
 
@@ -170,7 +170,7 @@ parallel-guidellm RR CONCURRENT_PER_WORKER REQUESTS_PER_WORKER INPUT_LEN OUTPUT_
     RATE={{RR}} \
     INPUT_LEN={{INPUT_LEN}} \
     OUTPUT_LEN={{OUTPUT_LEN}} \
-    BASE_URL="http://llm-d-inference-gateway-istio.vllm.svc.cluster.local" \
+    BASE_URL="http://wide-ep-llm-d-inference-gateway-istio.vllm.svc.cluster.local" \
     OUTPUT_PATH="parallel-guidellm-$(date +%Y%m%d-%H%M%S)" \
     POKER_IMAGE="{{env_var('POKER_IMAGE')}}" \
     POKER_TAG="{{env_var('POKER_TAG')}}" \
